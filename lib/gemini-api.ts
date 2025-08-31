@@ -64,17 +64,19 @@ export const generateFinalImage = async (subjectPrompt: string, templateImage: s
 
 
 /**
- * Edits an existing image based on a text prompt (in-painting style).
+ * Edits an existing image using a mask and a text prompt (in-painting/out-painting).
  * @param baseImage The base64 string of the image to edit.
+ * @param maskImage The base64 string of the black-and-white mask. White areas will be edited.
  * @param editPrompt The text prompt describing the desired changes.
  * @param negativePrompt A string of keywords to avoid in the edited image.
  * @returns A promise that resolves to the edited base64 image string, or null if generation fails.
  */
-export const editImage = async (baseImage: string, editPrompt: string, negativePrompt: string): Promise<string | null> => {
-    const fullPrompt = negativePrompt ? `${editPrompt}. AVOID THE FOLLOWING: ${negativePrompt}` : editPrompt;
+export const inpaintImage = async (baseImage: string, maskImage: string, editPrompt: string, negativePrompt: string): Promise<string | null> => {
+    const fullPrompt = `Using the second image as a mask on the first image, perform the following edit: "${editPrompt}". ${negativePrompt ? `AVOID THE FOLLOWING: ${negativePrompt}` : ''}`;
     
     const parts = [
         { inlineData: { mimeType: 'image/png', data: baseImage.split(',')[1] } },
+        { inlineData: { mimeType: 'image/png', data: maskImage.split(',')[1] } },
         { text: fullPrompt }
     ];
 

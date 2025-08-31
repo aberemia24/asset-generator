@@ -15,7 +15,7 @@ import useLocalStorage from '../../hooks/useLocalStorage';
 import RecentPromptsDropdown from '../shared/RecentPromptsDropdown';
 import ImageCropper from '../shared/ImageCropper';
 import PresetPromptsDropdown from '../shared/PresetPromptsDropdown';
-import ImageEditor from '../shared/ImageEditor';
+import AdvancedImageEditor from '../shared/AdvancedImageEditor';
 import VariationGenerator from '../shared/VariationGenerator';
 
 interface DirectGenerationModeProps extends CommonGenerationParams {
@@ -110,7 +110,7 @@ const DirectGenerationMode = ({
     
     const [displayImages, setDisplayImages] = useState<string[]>([]);
     const [croppingState, setCroppingState] = useState<{ index: number; src: string } | null>(null);
-    const [editingState, setEditingState] = useState<{ index: number; src: string } | null>(null);
+    const [advancedEditingState, setAdvancedEditingState] = useState<{ index: number; src: string } | null>(null);
     const [variationState, setVariationState] = useState<{ index: number; src: string } | null>(null);
 
     const [directState, directFormAction, isDirectPending] = useActionState(generateDirectAction, { images: [], error: null });
@@ -180,14 +180,14 @@ const DirectGenerationMode = ({
         setCroppingState(null);
     };
 
-    const handleEditSave = (editedImage: string) => {
-        if (editingState === null) return;
+    const handleAdvancedEditSave = (editedImage: string) => {
+        if (advancedEditingState === null) return;
         
         const newImages = [...displayImages];
-        newImages[editingState.index] = editedImage;
+        newImages[advancedEditingState.index] = editedImage;
         setDisplayImages(newImages);
         
-        setEditingState(null);
+        setAdvancedEditingState(null);
     };
 
      const handleVariationSave = (selectedImage: string) => {
@@ -210,11 +210,11 @@ const DirectGenerationMode = ({
                     aspect={aspectRatio}
                 />
             )}
-             {editingState && (
-                <ImageEditor
-                    imageSrc={editingState.src}
-                    onSave={handleEditSave}
-                    onClose={() => setEditingState(null)}
+             {advancedEditingState && (
+                <AdvancedImageEditor
+                    imageSrc={advancedEditingState.src}
+                    onSave={handleAdvancedEditSave}
+                    onClose={() => setAdvancedEditingState(null)}
                     negativePrompt={negativePrompt}
                 />
             )}
@@ -315,8 +315,8 @@ const DirectGenerationMode = ({
                                             <Button type="button" variant="secondary" onClick={() => setCroppingState({ index, src: img })}>
                                                 Crop
                                             </Button>
-                                            <Button type="button" variant="secondary" onClick={() => setEditingState({ index, src: img })}>
-                                                Edit
+                                            <Button type="button" variant="secondary" onClick={() => setAdvancedEditingState({ index, src: img })}>
+                                                Advanced Edit
                                             </Button>
                                             <Button type="button" variant="secondary" onClick={() => setVariationState({ index, src: img })}>
                                                 Variations

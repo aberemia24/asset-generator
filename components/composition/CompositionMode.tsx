@@ -16,7 +16,7 @@ import useLocalStorage from '../../hooks/useLocalStorage';
 import RecentPromptsDropdown from '../shared/RecentPromptsDropdown';
 import ImageCropper from '../shared/ImageCropper';
 import PresetPromptsDropdown from '../shared/PresetPromptsDropdown';
-import ImageEditor from '../shared/ImageEditor';
+import AdvancedImageEditor from '../shared/AdvancedImageEditor';
 import VariationGenerator from '../shared/VariationGenerator';
 import { ToggleGroup, ToggleButton } from '../ui/ToggleGroup';
 import StockImageSearcher from '../shared/StockImageSearcher';
@@ -189,7 +189,7 @@ const CompositionMode = ({
     const [displayTemplateImage, setDisplayTemplateImage] = useState<string | null>(null);
     const [displayFinalImage, setDisplayFinalImage] = useState<string | null>(null);
     const [croppingState, setCroppingState] = useState<{ type: 'template' | 'final'; src: string } | null>(null);
-    const [editingState, setEditingState] = useState<{ type: 'template' | 'final'; src: string } | null>(null);
+    const [advancedEditingState, setAdvancedEditingState] = useState<{ type: 'template' | 'final'; src: string } | null>(null);
     const [variationState, setVariationState] = useState<{ type: 'template' | 'final'; src: string } | null>(null);
 
     const [recentTemplatePrompts, setRecentTemplatePrompts] = useLocalStorage<string[]>('recentTemplatePrompts', []);
@@ -312,16 +312,16 @@ const CompositionMode = ({
         setCroppingState(null);
     };
 
-    const handleEditSave = (editedImage: string) => {
-        if (editingState?.type === 'template') {
+    const handleAdvancedEditSave = (editedImage: string) => {
+        if (advancedEditingState?.type === 'template') {
             setDisplayTemplateImage(editedImage);
-            if (selectedTemplate === editingState.src) {
+            if (selectedTemplate === advancedEditingState.src) {
                 setSelectedTemplate(editedImage);
             }
-        } else if (editingState?.type === 'final') {
+        } else if (advancedEditingState?.type === 'final') {
             setDisplayFinalImage(editedImage);
         }
-        setEditingState(null);
+        setAdvancedEditingState(null);
     };
 
     const handleVariationSave = (selectedImage: string) => {
@@ -374,11 +374,11 @@ const CompositionMode = ({
                     aspect={aspectRatio}
                 />
             )}
-            {editingState && (
-                <ImageEditor
-                    imageSrc={editingState.src}
-                    onSave={handleEditSave}
-                    onClose={() => setEditingState(null)}
+            {advancedEditingState && (
+                <AdvancedImageEditor
+                    imageSrc={advancedEditingState.src}
+                    onSave={handleAdvancedEditSave}
+                    onClose={() => setAdvancedEditingState(null)}
                     negativePrompt={negativePrompt}
                 />
             )}
@@ -506,8 +506,8 @@ const CompositionMode = ({
                                     <Button type="button" variant="secondary" onClick={() => displayTemplateImage && setCroppingState({ type: 'template', src: displayTemplateImage })} disabled={!displayTemplateImage}>
                                         Crop
                                     </Button>
-                                    <Button type="button" variant="secondary" onClick={() => displayTemplateImage && setEditingState({ type: 'template', src: displayTemplateImage })} disabled={!displayTemplateImage}>
-                                        Edit
+                                    <Button type="button" variant="secondary" onClick={() => displayTemplateImage && setAdvancedEditingState({ type: 'template', src: displayTemplateImage })} disabled={!displayTemplateImage}>
+                                        Advanced Edit
                                     </Button>
                                     <Button type="button" variant="secondary" onClick={() => displayTemplateImage && setVariationState({ type: 'template', src: displayTemplateImage })} disabled={!displayTemplateImage}>
                                         Variations
@@ -602,8 +602,8 @@ const CompositionMode = ({
                                 <Button type="button" variant="secondary" onClick={() => displayFinalImage && setCroppingState({ type: 'final', src: displayFinalImage })} disabled={!displayFinalImage}>
                                     Crop
                                 </Button>
-                                 <Button type="button" variant="secondary" onClick={() => displayFinalImage && setEditingState({ type: 'final', src: displayFinalImage })} disabled={!displayFinalImage}>
-                                    Edit
+                                 <Button type="button" variant="secondary" onClick={() => displayFinalImage && setAdvancedEditingState({ type: 'final', src: displayFinalImage })} disabled={!displayFinalImage}>
+                                    Advanced Edit
                                 </Button>
                                 <Button type="button" variant="secondary" onClick={() => displayFinalImage && setVariationState({ type: 'final', src: displayFinalImage })} disabled={!displayFinalImage}>
                                     Variations

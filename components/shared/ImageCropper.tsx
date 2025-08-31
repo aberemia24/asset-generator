@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import type { Point, Area } from 'react-easy-crop';
@@ -43,7 +42,14 @@ const ImageCropper: React.FC<ImageCropperProps> = ({ imageSrc, onCropSave, onClo
     }, []);
 
     const handleSaveCrop = async () => {
-        if (!croppedAreaPixels || !imageSrc) return;
+        if (!imageSrc) return;
+
+        // If no crop selection has been made, 'save' means accept the original.
+        if (!croppedAreaPixels) {
+            onCropSave(imageSrc);
+            return;
+        }
+
         try {
             const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
             if (croppedImage) {

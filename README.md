@@ -49,7 +49,7 @@ A straightforward text-to-image generator for creating standalone assets.
     -   **Presets & Recents:** Quickly access pre-written prompt ideas and your own recent prompts.
 -   **Image Editing Suite:**
     -   **Crop:** Adjust the framing of any generated image with a full-featured cropper.
-    -   **Edit with AI:** Provide a text prompt to make changes to an image (e.g., "add sunglasses to the person").
+    -   **Advanced Edit with AI:** Perform granular edits with in-painting by drawing a mask over an area and describing the change. Expand the image's canvas with out-painting to extend the scene in any direction.
     -   **Variations:** Generate slightly different versions of an image to find the perfect one.
 -   **History Drawer:** Access your last 5 generations, with the ability to reuse prompts and settings.
 -   **Aspect Ratio Control:** Generate images in various formats (16:9, 4:3, 1:1, 3:4, 9:16).
@@ -77,7 +77,6 @@ A straightforward text-to-image generator for creating standalone assets.
 ### Future Improvements Roadmap
 1.  **Backend for Key Security:** Create a simple serverless function or backend service to act as a proxy. The frontend would make requests to this backend, which would then securely attach the API keys and forward the requests to the AI/Stock services.
 2.  **Full Database Integration:** Replace `localStorage` with a proper database (e.g., Supabase, Firebase) to enable user accounts, persistent generation history, and saved prompts.
-3.  **Advanced In-painting/Out-painting:** Implement more granular image editing tools, allowing users to select a specific area of an image to edit or to expand the canvas.
-4.  **Video Generation:** Integrate a video generation model (e.g., 'veo-2.0-generate-001') to expand the app's capabilities beyond static images.
-5.  **Global State Management:** Introduce a library like Zustand for more robust and scalable state management, especially for user data and history.
-6.  **Enhanced Error Handling:** Implement more user-friendly error messages and a logging service to track API failures.
+3.  **Video Generation:** Integrate a video generation model (e.g., 'veo-2.0-generate-001') to expand the app's capabilities beyond static images.
+4.  **Global State Management:** Introduce a library like Zustand for more robust and scalable state management, especially for user data and history.
+5.  **Enhanced Error Handling:** Implement more user-friendly error messages and a logging service to track API failures.
