@@ -1,4 +1,5 @@
 
+
 import { Dispatch, SetStateAction } from 'react';
 
 /** Defines the possible aspect ratios for image generation. */
@@ -25,20 +26,6 @@ export interface HistoryItem {
     timestamp: number;
     /** The aspect ratio of the generated image. */
     aspectRatio: AspectRatio;
-}
-
-/**
- * A collection of common props passed down to both generation mode components.
- */
-export interface CommonGenerationParams {
-    /** The current negative prompt string. */
-    negativePrompt: string;
-    /** Function to update the negative prompt string. */
-    setNegativePrompt: Dispatch<SetStateAction<string>>;
-    /** The array of current history items. */
-    history: HistoryItem[];
-    /** Function to update the history items array. */
-    setHistory: Dispatch<SetStateAction<HistoryItem[]>>;
 }
 
 /**

@@ -1,7 +1,9 @@
 
 
+
 import React, { useState, useActionState, useId } from 'react';
 import { searchAllStockSites, areAnyStockApisConfigured } from '../../lib/stock-api';
+import { handleApiError } from '../../lib/error-handler';
 import { UnifiedStockImage, StockImageOrientation } from '../../types';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -43,8 +45,8 @@ async function searchAction(previousState: SearchFormState, formData: FormData):
         results.sort(() => Math.random() - 0.5);
         return { images: results, error: null, query };
     } catch (e) {
-        const message = e instanceof Error ? e.message : 'An unknown error occurred.';
-        return { images: [], error: `Failed to search for images: ${message}`, query };
+        const errorMessage = handleApiError(e, { source: 'searchAction', query });
+        return { images: [], error: errorMessage, query };
     }
 }
 

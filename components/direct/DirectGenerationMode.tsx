@@ -1,8 +1,14 @@
 
 
+
+
+
+
 import React, { useState, useActionState, useEffect } from 'react';
-import { CommonGenerationParams, AspectRatio, HistoryItem } from '../../types';
+import { shallow } from 'zustand/shallow';
+import { AspectRatio, HistoryItem } from '../../types';
 import { generateDirectImages, generateNegativePrompt, enhancePrompt } from '../../lib/gemini-api';
+import { handleApiError } from '../../lib/error-handler';
 import LoadingSpinner from '../shared/LoadingSpinner';
 import DownloadButton from '../shared/DownloadButton';
 import UploadButton from '../shared/UploadButton';
@@ -11,21 +17,12 @@ import Input from '../ui/Input';
 import Textarea from '../ui/Textarea';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
-import useLocalStorage from '../../hooks/useLocalStorage';
 import RecentPromptsDropdown from '../shared/RecentPromptsDropdown';
 import ImageCropper from '../shared/ImageCropper';
 import PresetPromptsDropdown from '../shared/PresetPromptsDropdown';
 import AdvancedImageEditor from '../shared/AdvancedImageEditor';
 import VariationGenerator from '../shared/VariationGenerator';
-
-interface DirectGenerationModeProps extends CommonGenerationParams {
-    directPrompt: string;
-    setDirectPrompt: React.Dispatch<React.SetStateAction<string>>;
-    aspectRatio: AspectRatio;
-    setAspectRatio: React.Dispatch<React.SetStateAction<AspectRatio>>;
-    batchSize: number;
-    setBatchSize: React.Dispatch<React.SetStateAction<number>>;
-}
+import { useStore } from '../../store';
 
 /**
  * A UI group component that standardizes the layout for a label and its associated form element.
@@ -87,8 +84,11 @@ async function generateDirectAction(previousState: DirectFormState, formData: Fo
         const urls = await generateDirectImages(prompt, negativePrompt, aspectRatio, batchSize);
         return { images: urls, error: null, promptUsed: { prompt, timestamp: Date.now() } };
     } catch (e) {
-        console.error(e);
-        return { images: [], error: 'Failed to generate images.' };
+        const errorMessage = handleApiError(e, {
+            source: 'generateDirectAction',
+            prompt,
+        });
+        return { images: [], error: errorMessage };
     }
 }
 
@@ -97,16 +97,39 @@ async function generateDirectAction(previousState: DirectFormState, formData: Fo
  * This mode provides a simple text-to-image interface for creating standalone assets,
  * with options for batch generation and various aspect ratios.
  */
-const DirectGenerationMode = ({
-    negativePrompt, setNegativePrompt,
-    directPrompt, setDirectPrompt,
-    aspectRatio, setAspectRatio,
-    batchSize, setBatchSize,
-    history, setHistory
-}: DirectGenerationModeProps) => {
+const DirectGenerationMode = () => {
+    // Select state from the Zustand store using shallow equality for performance
+    const {
+        directPrompt, negativePrompt, aspectRatio, batchSize, recentDirectPrompts
+    } = useStore(
+        state => ({
+            directPrompt: state.directPrompt,
+            negativePrompt: state.negativePrompt,
+            aspectRatio: state.directAspectRatio,
+            batchSize: state.batchSize,
+            recentDirectPrompts: state.recentDirectPrompts,
+        }),
+        shallow
+    );
+
+    // Select actions from the Zustand store
+    const {
+        setDirectPrompt, setNegativePrompt, setDirectAspectRatio, setBatchSize,
+        addToHistory, addRecentDirectPrompt
+    } = useStore(
+        state => ({
+            setDirectPrompt: state.setDirectPrompt,
+            setNegativePrompt: state.setNegativePrompt,
+            setDirectAspectRatio: state.setDirectAspectRatio,
+            setBatchSize: state.setBatchSize,
+            addToHistory: state.addToHistory,
+            addRecentDirectPrompt: state.addRecentDirectPrompt,
+        }),
+        shallow
+    );
+
     const [isGeneratingNegative, setIsGeneratingNegative] = useState(false);
     const [isEnhancing, setIsEnhancing] = useState(false);
-    const [recentDirectPrompts, setRecentDirectPrompts] = useLocalStorage<string[]>('recentDirectPrompts', []);
     
     const [displayImages, setDisplayImages] = useState<string[]>([]);
     const [croppingState, setCroppingState] = useState<{ index: number; src: string } | null>(null);
@@ -117,15 +140,12 @@ const DirectGenerationMode = ({
 
     // --- Effect Hooks ---
 
-    // Add successful prompt to recent prompts list
+    // Add successful prompt to recent prompts list in the global store
     useEffect(() => {
         if (directState.promptUsed) {
-            const currentPrompt = directState.promptUsed.prompt;
-            setRecentDirectPrompts(prev => 
-                [currentPrompt, ...prev.filter(p => p !== currentPrompt)].slice(0, 5)
-            );
+            addRecentDirectPrompt(directState.promptUsed.prompt);
         }
-    }, [directState.promptUsed]);
+    }, [directState.promptUsed, addRecentDirectPrompt]);
 
     // Handle results from form action: update UI and history
     useEffect(() => {
@@ -140,9 +160,9 @@ const DirectGenerationMode = ({
                 timestamp: Date.now(),
                 aspectRatio,
             }));
-            setHistory(prev => [...newHistoryItems, ...prev].slice(0, 5));
+            addToHistory(newHistoryItems);
         }
-    }, [directState.images]);
+    }, [directState.images, directState.promptUsed, negativePrompt, aspectRatio, addToHistory]);
     
     // --- Event Handlers ---
 
@@ -152,7 +172,8 @@ const DirectGenerationMode = ({
             const newNegativePrompt = await generateNegativePrompt(directPrompt);
             setNegativePrompt(newNegativePrompt);
         } catch (error) {
-            console.error("Failed to generate negative prompt:", error);
+            const errorMessage = handleApiError(error, { source: 'handleAutoNegativePrompt' });
+            alert(`Error: ${errorMessage}`);
         } finally {
             setIsGeneratingNegative(false);
         }
@@ -164,7 +185,8 @@ const DirectGenerationMode = ({
             const newPrompt = await enhancePrompt(directPrompt, null, 'direct');
             setDirectPrompt(newPrompt);
         } catch (error) {
-            console.error("Failed to enhance direct prompt:", error);
+            const errorMessage = handleApiError(error, { source: 'handleEnhanceDirectPrompt' });
+            alert(`Error: ${errorMessage}`);
         } finally {
             setIsEnhancing(false);
         }
@@ -255,7 +277,7 @@ const DirectGenerationMode = ({
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormGroup label="Aspect Ratio" htmlFor="direct-aspect-ratio">
-                                <Select id="direct-aspect-ratio" name="direct-aspect-ratio" value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}>
+                                <Select id="direct-aspect-ratio" name="direct-aspect-ratio" value={aspectRatio} onChange={(e) => setDirectAspectRatio(e.target.value as AspectRatio)}>
                                     <option value="1:1">Square (1:1)</option>
                                     <option value="16:9">Wide (16:9)</option>
                                     <option value="4:3">Landscape (4:3)</option>

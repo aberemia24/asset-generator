@@ -1,5 +1,6 @@
 
 import { UnifiedStockImage, StockImageOrientation } from "../types";
+import { logError } from "./error-handler";
 
 // TODO: Add your Pexels API key to the environment variables.
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
@@ -52,14 +53,14 @@ export const searchPexelsImages = async (
         });
 
         if (!response.ok) {
-            console.error(`Pexels API error: ${response.status}`);
+            logError(new Error(`Pexels API error: ${response.status}`), { source: 'searchPexelsImages', query });
             return [];
         }
 
         const data = await response.json();
         return normalizePexelsResponse(data);
     } catch (error) {
-        console.error("Failed to fetch from Pexels API", error);
+        logError(error, { source: 'searchPexelsImages', query });
         return [];
     }
 };

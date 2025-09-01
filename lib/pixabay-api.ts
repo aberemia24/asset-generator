@@ -1,5 +1,6 @@
 
 import { UnifiedStockImage, StockImageOrientation } from "../types";
+import { logError } from "./error-handler";
 
 // TODO: Add your Pixabay API key to the environment variables.
 const PIXABAY_API_KEY = process.env.PIXABAY_API_KEY;
@@ -69,14 +70,14 @@ export const searchPixabayImages = async (
         const response = await fetch(url);
 
         if (!response.ok) {
-            console.error(`Pixabay API error: ${response.status}`);
+            logError(new Error(`Pixabay API error: ${response.status}`), { source: 'searchPixabayImages', query });
             return [];
         }
 
         const data = await response.json();
         return normalizePixabayResponse(data);
     } catch (error) {
-        console.error("Failed to fetch from Pixabay API", error);
+        logError(error, { source: 'searchPixabayImages', query });
         return [];
     }
 };

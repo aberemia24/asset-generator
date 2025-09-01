@@ -1,9 +1,16 @@
 
 
-import React, { useState, useActionState, useEffect } from 'react';
-import { CommonGenerationParams, AspectRatio, HistoryItem } from '../../types';
+
+
+
+
+
+import React, { useState, useActionState, useEffect, useRef } from 'react';
+import { shallow } from 'zustand/shallow';
+import { AspectRatio, HistoryItem } from '../../types';
 import { cn, fileToBase64, urlToBase64 } from '../../lib/utils';
 import { generateTemplateImage, generateFinalImage, generateNegativePrompt, enhancePrompt } from '../../lib/gemini-api';
+import { handleApiError } from '../../lib/error-handler';
 import LoadingSpinner from '../shared/LoadingSpinner';
 import DownloadButton from '../shared/DownloadButton';
 import UploadButton from '../shared/UploadButton';
@@ -12,7 +19,6 @@ import Input from '../ui/Input';
 import Textarea from '../ui/Textarea';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
-import useLocalStorage from '../../hooks/useLocalStorage';
 import RecentPromptsDropdown from '../shared/RecentPromptsDropdown';
 import ImageCropper from '../shared/ImageCropper';
 import PresetPromptsDropdown from '../shared/PresetPromptsDropdown';
@@ -20,16 +26,8 @@ import AdvancedImageEditor from '../shared/AdvancedImageEditor';
 import VariationGenerator from '../shared/VariationGenerator';
 import { ToggleGroup, ToggleButton } from '../ui/ToggleGroup';
 import StockImageSearcher from '../shared/StockImageSearcher';
+import { useStore } from '../../store';
 
-
-interface CompositionModeProps extends CommonGenerationParams {
-    templatePrompt: string;
-    setTemplatePrompt: React.Dispatch<React.SetStateAction<string>>;
-    subjectPrompt: string;
-    setSubjectPrompt: React.Dispatch<React.SetStateAction<string>>;
-    aspectRatio: AspectRatio;
-    setAspectRatio: React.Dispatch<React.SetStateAction<AspectRatio>>;
-}
 
 /**
  * A UI group component that standardizes the layout for a label and its associated form element.
@@ -115,8 +113,11 @@ async function generateTemplateAction(previousState: TemplateFormState, formData
         const result = await generateTemplateImage(prompt, negativePrompt, aspectRatio);
         return { image: result, error: null, promptUsed: { prompt, timestamp: Date.now() } };
     } catch (e) {
-        console.error(e);
-        return { image: null, error: 'Failed to generate template image.' };
+        const errorMessage = handleApiError(e, {
+            source: 'generateTemplateAction',
+            prompt,
+        });
+        return { image: null, error: errorMessage };
     }
 }
 
@@ -147,8 +148,8 @@ async function generateFinalImageAction(previousState: FinalImageFormState, form
         try {
             styleReferenceImage = await fileToBase64(styleRefFile);
         } catch (err) {
-            console.error(err);
-            return { image: null, error: "Could not process the style reference image." };
+            const errorMessage = handleApiError(err, { source: 'fileToBase64' });
+            return { image: null, error: `Could not process the style reference image. ${errorMessage}` };
         }
     }
 
@@ -160,8 +161,11 @@ async function generateFinalImageAction(previousState: FinalImageFormState, form
             return { image: null, error: 'The model did not return an image. Try adjusting your prompt.' };
         }
     } catch (e) {
-        console.error(e);
-        return { image: null, error: 'Failed to generate final image.' };
+        const errorMessage = handleApiError(e, {
+            source: 'generateFinalImageAction',
+            subjectPrompt,
+        });
+        return { image: null, error: errorMessage };
     }
 }
 
@@ -171,13 +175,40 @@ async function generateFinalImageAction(previousState: FinalImageFormState, form
  * and then add a subject to it, with an optional style reference.
  * It handles state for prompts, images, and user interactions for this workflow.
  */
-const CompositionMode = ({
-    negativePrompt, setNegativePrompt,
-    templatePrompt, setTemplatePrompt,
-    subjectPrompt, setSubjectPrompt,
-    aspectRatio, setAspectRatio,
-    history, setHistory
-}: CompositionModeProps) => {
+const CompositionMode = () => {
+    // Select state from the Zustand store using shallow equality for performance
+    const {
+        templatePrompt, subjectPrompt, negativePrompt, aspectRatio,
+        recentTemplatePrompts, recentSubjectPrompts
+    } = useStore(
+        state => ({
+            templatePrompt: state.templatePrompt,
+            subjectPrompt: state.subjectPrompt,
+            negativePrompt: state.negativePrompt,
+            aspectRatio: state.compAspectRatio,
+            recentTemplatePrompts: state.recentTemplatePrompts,
+            recentSubjectPrompts: state.recentSubjectPrompts,
+        }),
+        shallow
+    );
+
+    // Select actions from the Zustand store
+    const {
+        setTemplatePrompt, setSubjectPrompt, setNegativePrompt, setCompAspectRatio,
+        addToHistory, addRecentTemplatePrompt, addRecentSubjectPrompt
+    } = useStore(
+        state => ({
+            setTemplatePrompt: state.setTemplatePrompt,
+            setSubjectPrompt: state.setSubjectPrompt,
+            setNegativePrompt: state.setNegativePrompt,
+            setCompAspectRatio: state.setCompAspectRatio,
+            addToHistory: state.addToHistory,
+            addRecentTemplatePrompt: state.addRecentTemplatePrompt,
+            addRecentSubjectPrompt: state.addRecentSubjectPrompt,
+        }),
+        shallow
+    );
+
     const [templateSource, setTemplateSource] = useState<'ai' | 'stock'>('ai');
     const [styleReferenceImage, setStyleReferenceImage] = useState<string | null>(null);
     const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -192,32 +223,25 @@ const CompositionMode = ({
     const [advancedEditingState, setAdvancedEditingState] = useState<{ type: 'template' | 'final'; src: string } | null>(null);
     const [variationState, setVariationState] = useState<{ type: 'template' | 'final'; src: string } | null>(null);
 
-    const [recentTemplatePrompts, setRecentTemplatePrompts] = useLocalStorage<string[]>('recentTemplatePrompts', []);
-    const [recentSubjectPrompts, setRecentSubjectPrompts] = useLocalStorage<string[]>('recentSubjectPrompts', []);
-
     const [templateState, templateFormAction, isTemplatePending] = useActionState(generateTemplateAction, { image: null, error: null });
     const [finalImageState, finalImageFormAction, isFinalImagePending] = useActionState(generateFinalImageAction, { image: null, error: null });
 
+    const styleRefInputRef = useRef<HTMLInputElement>(null);
+
     // --- Effect Hooks ---
     
-    // Add successful prompts to recent prompts list
+    // Add successful prompts to recent prompts list in the global store
     useEffect(() => {
         if (templateState.promptUsed) {
-            const currentPrompt = templateState.promptUsed.prompt;
-            setRecentTemplatePrompts(prev => 
-                [currentPrompt, ...prev.filter(p => p !== currentPrompt)].slice(0, 5)
-            );
+            addRecentTemplatePrompt(templateState.promptUsed.prompt);
         }
-    }, [templateState.promptUsed]);
+    }, [templateState.promptUsed, addRecentTemplatePrompt]);
 
     useEffect(() => {
         if (finalImageState.promptUsed) {
-            const currentPrompt = finalImageState.promptUsed.prompt;
-            setRecentSubjectPrompts(prev => 
-                [currentPrompt, ...prev.filter(p => p !== currentPrompt)].slice(0, 5)
-            );
+            addRecentSubjectPrompt(finalImageState.promptUsed.prompt);
         }
-    }, [finalImageState.promptUsed]);
+    }, [finalImageState.promptUsed, addRecentSubjectPrompt]);
 
     // Handle results from form actions: update UI and history
     useEffect(() => {
@@ -233,9 +257,9 @@ const CompositionMode = ({
                 timestamp: Date.now(),
                 aspectRatio,
             };
-            setHistory(prev => [newHistoryItem, ...prev].slice(0, 5));
+            addToHistory(newHistoryItem);
         }
-    }, [templateState.image]);
+    }, [templateState.image, templateState.promptUsed, negativePrompt, aspectRatio, addToHistory]);
     
     useEffect(() => {
         if (finalImageState.image) {
@@ -249,16 +273,22 @@ const CompositionMode = ({
                 timestamp: Date.now(),
                 aspectRatio,
             };
-            setHistory(prev => [newHistoryItem, ...prev].slice(0, 5));
+            addToHistory(newHistoryItem);
         }
-    }, [finalImageState.image]);
+    }, [finalImageState.image, finalImageState.promptUsed, negativePrompt, aspectRatio, addToHistory]);
 
     // --- Event Handlers ---
 
     const handleStyleReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const base64 = await fileToBase64(e.target.files[0]);
-            setStyleReferenceImage(base64);
+            try {
+                const base64 = await fileToBase64(e.target.files[0]);
+                setStyleReferenceImage(base64);
+            } catch (error) {
+                const errorMessage = handleApiError(error, { source: 'handleStyleReferenceUpload' });
+                alert(`Error processing file: ${errorMessage}`);
+                setStyleReferenceImage(null);
+            }
         } else {
             setStyleReferenceImage(null);
         }
@@ -270,7 +300,8 @@ const CompositionMode = ({
             const newNegativePrompt = await generateNegativePrompt(templatePrompt);
             setNegativePrompt(newNegativePrompt);
         } catch (error) {
-            console.error("Failed to generate negative prompt:", error);
+            const errorMessage = handleApiError(error, { source: 'handleAutoNegativePrompt' });
+            alert(`Error: ${errorMessage}`);
         } finally {
             setIsGeneratingNegative(false);
         }
@@ -282,7 +313,8 @@ const CompositionMode = ({
             const newPrompt = await enhancePrompt(templatePrompt, null, 'template');
             setTemplatePrompt(newPrompt);
         } catch (error) {
-            console.error("Failed to enhance template prompt:", error);
+            const errorMessage = handleApiError(error, { source: 'handleEnhanceTemplatePrompt' });
+            alert(`Error: ${errorMessage}`);
         } finally {
             setIsEnhancingTemplate(false);
         }
@@ -294,7 +326,8 @@ const CompositionMode = ({
             const newPrompt = await enhancePrompt(subjectPrompt, templatePrompt, 'subject');
             setSubjectPrompt(newPrompt);
         } catch (error) {
-            console.error("Failed to enhance subject prompt:", error);
+            const errorMessage = handleApiError(error, { source: 'handleEnhanceSubjectPrompt' });
+            alert(`Error: ${errorMessage}`);
         } finally {
             setIsEnhancingSubject(false);
         }
@@ -353,11 +386,11 @@ const CompositionMode = ({
                 timestamp: Date.now(),
                 aspectRatio, // This might not match perfectly but is a reasonable guess
             };
-            setHistory(prev => [newHistoryItem, ...prev].slice(0, 5));
+            addToHistory(newHistoryItem);
 
         } catch (error) {
-            console.error("Failed to convert stock image:", error);
-            // You could set an error state here to show in the UI
+            const errorMessage = handleApiError(error, { source: 'handleStockImageSelect', imageUrl });
+            alert(`Error converting image: ${errorMessage}`);
         } finally {
             setIsConvertingStock(false);
         }
@@ -430,7 +463,7 @@ const CompositionMode = ({
                                         <Textarea id="template-prompt" name="template-prompt" value={templatePrompt} onChange={(e) => setTemplatePrompt(e.target.value)} />
                                     </div>
                                     <FormGroup label="Aspect Ratio" htmlFor="aspect-ratio">
-                                        <Select id="aspect-ratio" name="aspect-ratio" value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}>
+                                        <Select id="aspect-ratio" name="aspect-ratio" value={aspectRatio} onChange={(e) => setCompAspectRatio(e.target.value as AspectRatio)}>
                                             <option value="16:9">Wide (16:9)</option>
                                             <option value="4:3">Landscape (4:3)</option>
                                             <option value="1:1">Square (1:1)</option>
@@ -572,14 +605,15 @@ const CompositionMode = ({
                                          )}>
                                             Click to upload an image
                                         </label>
-                                        <Input className="sr-only" type="file" id="style-ref" name="style-ref" accept="image/*" onChange={handleStyleReferenceUpload} />
+                                        <Input ref={styleRefInputRef} className="sr-only" type="file" id="style-ref" name="style-ref" accept="image/*" onChange={handleStyleReferenceUpload} />
                                         {styleReferenceImage && 
                                             <div className="relative w-32 h-32">
                                                 <img src={styleReferenceImage} alt="Style reference preview" className="rounded-md object-cover w-full h-full" />
                                                 <button type="button" onClick={() => {
                                                     setStyleReferenceImage(null);
-                                                    const fileInput = document.getElementById('style-ref') as HTMLInputElement;
-                                                    if(fileInput) fileInput.value = '';
+                                                    if (styleRefInputRef.current) {
+                                                        styleRefInputRef.current.value = '';
+                                                    }
                                                 }} className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-lg font-bold">&times;</button>
                                             </div>
                                         }

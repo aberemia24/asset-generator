@@ -1,4 +1,3 @@
-
 # Content Canvas - AI Content Generation Suite
 
 Content Canvas is a comprehensive internal tool designed to streamline the creation of high-quality visual assets using Google's Gemini AI models. It provides a user-friendly interface for non-technical team members to generate consistent, on-brand images for various needs, from website hero banners to recipe photos and logos.
@@ -51,7 +50,8 @@ A straightforward text-to-image generator for creating standalone assets.
     -   **Crop:** Adjust the framing of any generated image with a full-featured cropper.
     -   **Advanced Edit with AI:** Perform granular edits with in-painting by drawing a mask over an area and describing the change. Expand the image's canvas with out-painting to extend the scene in any direction.
     -   **Variations:** Generate slightly different versions of an image to find the perfect one.
--   **History Drawer:** Access your last 5 generations, with the ability to reuse prompts and settings.
+-   **Robust Error Handling:** User-friendly error messages are displayed for common issues like invalid API keys, safety policy violations, or network failures. All errors are logged with detailed context for easier debugging.
+-   **History Drawer:** Access your recent generations, with the ability to reuse prompts and settings.
 -   **Aspect Ratio Control:** Generate images in various formats (16:9, 4:3, 1:1, 3:4, 9:16).
 -   **Download & Upload:** Easily save assets locally or upload them to cloud storage (requires Supabase integration).
 
@@ -59,9 +59,9 @@ A straightforward text-to-image generator for creating standalone assets.
 ```
 /
 ├── components/       # Reusable UI components (shared, direct, composition)
-├── lib/              # Core logic and API clients (Gemini, Pexels, etc.)
-├── hooks/            # Custom React hooks for state management
-├── App.tsx           # Main application component and state management
+├── lib/              # Core logic and API clients (Gemini, error handling, etc.)
+├── store/            # Zustand global state management slices
+├── App.tsx           # Main application component
 ├── types.ts          # TypeScript type definitions
 └── ...               # Configuration and public assets
 ```
@@ -70,13 +70,10 @@ A straightforward text-to-image generator for creating standalone assets.
 
 ### Current Limitations
 -   **Client-Side API Keys:** All API keys are used directly in the frontend, exposing them to the user. This is not secure for a public-facing application.
--   **No User Persistence:** History is stored in `localStorage` and is limited to the last 5 items. There are no user accounts.
 -   **Simulated Uploads:** The "Upload to Storage" feature is a placeholder. It requires integrating a service like Supabase Storage to become functional.
--   **Local State Management:** State is managed within components using React hooks (`useState`, `useActionState`). For a larger application, a global state manager (like Zustand or Redux) would be beneficial.
+-   **No User Accounts:** History and recent prompts are stored in `localStorage` and are not tied to user accounts.
 
 ### Future Improvements Roadmap
 1.  **Backend for Key Security:** Create a simple serverless function or backend service to act as a proxy. The frontend would make requests to this backend, which would then securely attach the API keys and forward the requests to the AI/Stock services.
 2.  **Full Database Integration:** Replace `localStorage` with a proper database (e.g., Supabase, Firebase) to enable user accounts, persistent generation history, and saved prompts.
 3.  **Video Generation:** Integrate a video generation model (e.g., 'veo-2.0-generate-001') to expand the app's capabilities beyond static images.
-4.  **Global State Management:** Introduce a library like Zustand for more robust and scalable state management, especially for user data and history.
-5.  **Enhanced Error Handling:** Implement more user-friendly error messages and a logging service to track API failures.

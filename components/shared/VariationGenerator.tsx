@@ -1,6 +1,7 @@
 
 import React, { useActionState } from 'react';
 import { generateVariations } from '../../lib/gemini-api';
+import { handleApiError } from '../../lib/error-handler';
 import Button from '../ui/Button';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -36,9 +37,8 @@ async function generateVariationsAction(previousState: VariationFormState, formD
             return { images: [], error: 'The model did not return any variations. Please try again.' };
         }
     } catch (e) {
-        console.error(e);
-        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-        return { images: [], error: `Failed to generate variations: ${errorMessage}` };
+        const errorMessage = handleApiError(e, { source: 'generateVariationsAction' });
+        return { images: [], error: errorMessage };
     }
 }
 

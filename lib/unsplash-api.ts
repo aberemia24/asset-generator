@@ -1,5 +1,6 @@
 
 import { UnifiedStockImage, StockImageOrientation } from "../types";
+import { logError } from "./error-handler";
 
 // TODO: Add your Unsplash Access Key to the environment variables.
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
@@ -52,14 +53,14 @@ export const searchUnsplashImages = async (
         });
 
         if (!response.ok) {
-            console.error(`Unsplash API error: ${response.status}`);
+            logError(new Error(`Unsplash API error: ${response.status}`), { source: 'searchUnsplashImages', query });
             return [];
         }
 
         const data = await response.json();
         return normalizeUnsplashResponse(data);
     } catch (error) {
-        console.error("Failed to fetch from Unsplash API", error);
+        logError(error, { source: 'searchUnsplashImages', query });
         return [];
     }
 };

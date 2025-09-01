@@ -1,5 +1,6 @@
 import React, { useState, useActionState, useEffect, useRef } from 'react';
 import { inpaintImage } from '../../lib/gemini-api';
+import { handleApiError } from '../../lib/error-handler';
 import Button from '../ui/Button';
 import Textarea from '../ui/Textarea';
 import LoadingSpinner from './LoadingSpinner';
@@ -35,9 +36,11 @@ async function editImageAction(previousState: EditFormState, formData: FormData)
             return { image: null, error: 'The model did not return an image. Try a different prompt.' };
         }
     } catch (e) {
-        console.error(e);
-        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-        return { image: null, error: `Failed to edit image: ${errorMessage}` };
+        const errorMessage = handleApiError(e, {
+            source: 'editImageAction',
+            editPrompt,
+        });
+        return { image: null, error: errorMessage };
     }
 }
 
@@ -68,7 +71,7 @@ const AdvancedImageEditor: React.FC<AdvancedImageEditorProps> = ({ imageSrc, onS
             setIsLoading(false);
         };
         img.onerror = () => {
-            console.error("Failed to load image for editor.");
+            handleApiError(new Error("Failed to load image for editor."), { source: 'AdvancedImageEditor' });
             setIsLoading(false);
         }
     }, [currentImage]);
